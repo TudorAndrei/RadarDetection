@@ -128,4 +128,4 @@ dmypy.json
 # Pyre type checker
 .pyre/
 */*.png
-lightnig_logs
+lightnig_logs/
