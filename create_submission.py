@@ -48,6 +48,6 @@ if __name__ == "__main__":
         predictions = torch.argmax(out, 1).numpy()
         # print(predictions)
         for i, pred in enumerate(predictions):
-            preds.append((file_name(img_path[i]), pred))
+            preds.append((file_name(img_path[i]), pred + 1))
     result_df = pd.DataFrame(preds, columns=["id", "label"])
     result_df.to_csv(os.path.join(sub_dir, f"{model_name}{hyp_print}.csv"), index=False)
