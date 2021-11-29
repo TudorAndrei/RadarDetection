@@ -1,13 +1,14 @@
 import torch
 from data_utils import DataGenerator
-from model import Model
+from convmixer import ConvMixer
 import numpy as np
 
 device = torch.device('cuda')
 BATCH_SIZE = 64
-NW = 2
+NW = 8
 device = torch.device('cuda')
-model = Model().to(device)
+model = ConvMixer(dim=8, depth=5,kernel_size=9, patch_size=9, n_classes=5).to(device)
+# model = Model().to(device)
 lossf = torch.nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters())
 
@@ -17,7 +18,7 @@ dataset = DataGenerator(
 train_ = dataset.get_train()
 val_ = dataset.get_val()
 
-epochs = 10
+epochs = 100
 for epoch in range(epochs):
     model.train()
     for img, label in train_:

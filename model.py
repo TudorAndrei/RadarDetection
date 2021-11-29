@@ -1,9 +1,10 @@
 import torch
 
+
 class Model(torch.nn.Module):
     def __init__(self):
-        self.flatten_size = 64 * 29 * 11
         super().__init__()
+        self.flatten_size = 64 * 29 * 11
         self.conv = torch.nn.Sequential(
             torch.nn.Conv2d(3, 64, kernel_size=3),
             torch.nn.Dropout(0.2),
@@ -27,4 +28,5 @@ class Model(torch.nn.Module):
         out = out.reshape(-1, self.flatten_size)
         out = self.cls(out)
         return out
+
 
