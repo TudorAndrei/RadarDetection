@@ -31,7 +31,7 @@ set winwidth=1
 exe 'vert 1resize ' . ((&columns * 95 + 95) / 190)
 exe 'vert 2resize ' . ((&columns * 94 + 95) / 190)
 argglobal
-balt data_utils.py
+balt ~/projects/mst/dl/radar/create_submission.py
 setlocal fdm=indent
 setlocal fde=0
 setlocal fmr={{{,}}}
@@ -40,17 +40,31 @@ setlocal fdl=99
 setlocal fml=1
 setlocal fdn=20
 setlocal fen
-let s:l = 11 - ((10 * winheight(0) + 25) / 50)
+27
+normal! zo
+33
+normal! zo
+34
+normal! zo
+35
+normal! zo
+36
+normal! zo
+53
+normal! zo
+56
+normal! zo
+let s:l = 48 - ((31 * winheight(0) + 25) / 51)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
-keepjumps 11
-normal! 0
+keepjumps 48
+normal! 048|
 wincmd w
 argglobal
-if bufexists("data_utils.py") | buffer data_utils.py | else | edit data_utils.py | endif
+if bufexists("convmixer_expanded.py") | buffer convmixer_expanded.py | else | edit convmixer_expanded.py | endif
 if &buftype ==# 'terminal'
-  silent file data_utils.py
+  silent file convmixer_expanded.py
 endif
 balt ~/projects/mst/dl/radar/create_submission.py
 setlocal fdm=indent
@@ -61,27 +75,22 @@ setlocal fdl=99
 setlocal fml=1
 setlocal fdn=20
 setlocal fen
-10
-normal! zo
-16
-normal! zo
-39
-normal! zo
-40
-normal! zo
-let s:l = 12 - ((11 * winheight(0) + 25) / 50)
+let s:l = 1 - ((0 * winheight(0) + 25) / 51)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
-keepjumps 12
+keepjumps 1
 normal! 0
 wincmd w
+2wincmd w
 exe 'vert 1resize ' . ((&columns * 95 + 95) / 190)
 exe 'vert 2resize ' . ((&columns * 94 + 95) / 190)
 tabnext 1
-badd +11 lightning.py
-badd +26 ~/projects/mst/dl/radar/create_submission.py
-badd +13 data_utils.py
+badd +48 lightning.py
+badd +1 trainer.py
+badd +12 data_utils.py
+badd +1 ~/projects/mst/dl/radar/create_submission.py
+badd +0 convmixer_expanded.py
 if exists('s:wipebuf') && len(win_findbuf(s:wipebuf)) == 0 && getbufvar(s:wipebuf, '&buftype') isnot# 'terminal'
   silent exe 'bwipe ' . s:wipebuf
 endif

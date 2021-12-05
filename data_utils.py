@@ -5,9 +5,32 @@ import os
 from torch.utils.data import DataLoader, Dataset
 from sklearn.model_selection import train_test_split
 
+
 def get_submission_dataloader(img_dir, bs, nw):
     dataset = RadarSubmission(img_dir)
     return DataLoader(dataset, batch_size=bs, num_workers=nw)
+
+
+def data_generator(img_dir, csv_path, bs=4, nw=1):
+
+    file_path = pd.read_csv(os.path.abspath(csv_path))
+
+    train_samples, val_samples = train_test_split(
+        file_path, test_size=0.2, shuffle=True, stratify=file_path["label"]
+    )
+
+    return DataLoader(
+        RadarDataset(img_dir, train_samples),
+        batch_size=bs,
+        shuffle=False,
+        num_workers=nw,
+    ), DataLoader(
+        RadarDataset(img_dir, val_samples),
+        batch_size=bs,
+        shuffle=False,
+        num_workers=nw,
+    )
+
 
 class RadarSubmission(Dataset):
     def __init__(self, img_dir) -> None:
@@ -19,18 +42,19 @@ class RadarSubmission(Dataset):
         img_path = self.img_paths[idx]
         img = cv2.imread(img_path)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        img = img/255
+        img = img / 255
         return img, self.img_paths[idx]
 
     def __len__(self):
         return len(self.img_paths)
+
 
 class RadarDataset(Dataset):
     def __init__(self, img_dir: str, data_csv: pd.DataFrame) -> None:
         super().__init__()
         self.image_dir = img_dir
         self.labels = dict(data_csv.values)
-        self.imgs = data_csv['id'].values
+        self.imgs = data_csv["id"].values
         self.n_samples = len(self.imgs)
 
     def __getitem__(self, idx):
@@ -39,40 +63,10 @@ class RadarDataset(Dataset):
         img_path = os.path.join(self.image_dir, img_name)
         img = cv2.imread(img_path)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        img = img/255
+        img = img / 255
         label = self.labels[img_name] - 1
         # print(label)
         return img, label
 
     def __len__(self):
         return self.n_samples
-
-
-class DataGenerator:
-    def __init__(self, img_dir, path, bs=4, nw=1) -> None:
-        self.img_dir = img_dir
-        self.bs = bs
-        self.nw = nw
-        file_path = pd.read_csv(path)
-        self.train_samples, self.val_samples = train_test_split(
-            file_path, test_size=0.2, shuffle=True, stratify=file_path["label"]
-        )
-        # Check if the split is stratified
-        # print(self.train_samples['label'].value_counts())
-        # print(self.val_samples['label'].value_counts())
-
-    def get_train(self):
-        return DataLoader(
-            RadarDataset(self.img_dir, self.train_samples),
-            batch_size=self.bs,
-            shuffle=False,
-            num_workers=self.nw,
-        )
-
-    def get_val(self):
-        return DataLoader(
-            RadarDataset(self.img_dir, self.val_samples),
-            batch_size=self.bs,
-            shuffle=False,
-            num_workers=self.nw,
-        )

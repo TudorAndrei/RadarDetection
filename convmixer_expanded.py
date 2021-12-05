@@ -10,7 +10,18 @@ class ResidualBlock(nn.Module):
         self.layers = nn.Sequential(*layers)
 
     def forward(self, x):
-        return self.layers(x) + x
+        out = self.layers(x) + x
+        return out
+
+
+class ConcatBlock(nn.Module):
+    def __init__(self, layers):
+        super().__init__()
+        self.layers = nn.Sequential(*layers)
+
+    def forward(self, x):
+        out = torch.cat([self.layers(x), x], dim=1)
+        return out
 
 
 class PatchEmbedding(nn.Module):
@@ -38,7 +49,7 @@ class GeluBatch(nn.Module):
 class DepthConv2d(nn.Module):
     def __init__(self, channels, kernel_size, padding):
         super().__init__()
-        self.conv = nn.Conv2d(
+        self.depth_conv = nn.Conv2d(
             in_channels=channels,
             out_channels=channels,
             kernel_size=kernel_size,
@@ -47,39 +58,49 @@ class DepthConv2d(nn.Module):
         )
 
     def forward(self, x):
-        return self.conv(x)
+        return self.depth_conv(x)
 
 
 class PointConv2d(nn.Module):
     def __init__(self, in_channels, out_channels):
         super().__init__()
-        self.conv = nn.Conv2d(
+        self.point_conv = nn.Conv2d(
             in_channels,
             out_channels,
             kernel_size=1,
         )
 
     def forward(self, x):
-        return self.conv(x)
+        return self.point_conv(x)
 
 
 class ConvMixerLayer(nn.Module):
-    def __init__(self, size, num_blocks, kernel_size=9):
+    def __init__(self, size, num_blocks, kernel_size=9, res_type="add"):
         super().__init__()
+        if res_type == "add":
+            self.residual = ResidualBlock
+        elif res_type == "cat":
+            self.residual = ConcatBlock
+            size = [size]
+
+            for i in range(1, num_blocks + 1):
+                size.append(2 * size[i - 1])
+
+        print(size)
 
         self.conv_mixer = nn.Sequential(
             *[
                 nn.Sequential(
-                    ResidualBlock(
+                    self.residual(
                         [
-                            DepthConv2d(size, kernel_size, "same"),
-                            GeluBatch(size),
+                            DepthConv2d(size[i], kernel_size, "same"),
+                            GeluBatch(size[i]),
                         ]
                     ),
-                    PointConv2d(size, size),
-                    GeluBatch(size),
+                    PointConv2d(size[i + 1], size[i + 1]),
+                    GeluBatch(size[i + 1]),
                 )
-                for _ in range(num_blocks)
+                for i in range(num_blocks)
             ]
         )
 
@@ -88,15 +109,17 @@ class ConvMixerLayer(nn.Module):
 
 
 class ConvMixer(nn.Module):
-    def __init__(self, size, num_blocks, kernel_size, patch_size, num_classes):
+    def __init__(
+        self, size, num_blocks, kernel_size, patch_size, num_classes, res_type
+    ):
         super().__init__()
         self.layers = nn.Sequential(
             PatchEmbedding(size, patch_size=patch_size),
             GeluBatch(size),
-            ConvMixerLayer(size, num_blocks, kernel_size),
+            ConvMixerLayer(size, num_blocks, kernel_size, res_type),
             nn.AdaptiveAvgPool2d((1, 1)),
             nn.Flatten(),
-            nn.Linear(size, num_classes),
+            nn.Linear(size * (2 ** num_blocks), num_classes),
         )
 
     def forward(self, x):
@@ -112,11 +135,13 @@ class ConvMixerModule(pl.LightningModule):
         patch_size=15,
         num_classes=5,
         lr=0.003,
+        res_type="add",
     ):
         super().__init__()
+        self.save_hyperparameters()
         self.lr = lr
         self.model = ConvMixer(
-            size, num_blocks, kernel_size, patch_size, num_classes
+            size, num_blocks, kernel_size, patch_size, num_classes, res_type
         )
         self.lossf = torch.nn.CrossEntropyLoss()
 
@@ -129,7 +154,7 @@ class ConvMixerModule(pl.LightningModule):
             "optimizer": optimizer,
             "lr_scheduler": {
                 "scheduler": scheduler,
-                "monitor": "pt/val_loss",
+                "monitor": "val/val_loss",
                 "interval": "epoch",
             },
         }
@@ -172,3 +197,4 @@ class ConvMixerModule(pl.LightningModule):
         self.log(
             "val/val_loss", loss, prog_bar=True, on_step=False, on_epoch=True
         )
+        self.log("hp_metric", loss)

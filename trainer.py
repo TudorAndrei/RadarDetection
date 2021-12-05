@@ -7,13 +7,13 @@ device = torch.device('cuda')
 BATCH_SIZE = 64
 NW = 8
 device = torch.device('cuda')
-model = ConvMixer(dim=8, depth=5,kernel_size=9, patch_size=9, n_classes=5).to(device)
+model = ConvMixer(size=8, num_blocks=5, kernel_size=9, patch_size=9, num_classes=5).to(device)
 # model = Model().to(device)
 lossf = torch.nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters())
 
 dataset = DataGenerator(
-    img_path="./train", path=r"train.csv", bs=BATCH_SIZE, nw=NW
+    img_dir="./train", path=r"train.csv", bs=BATCH_SIZE, nw=NW
 )
 train_ = dataset.get_train()
 val_ = dataset.get_val()
