@@ -13,10 +13,9 @@ BATCH_SIZE = 128
 NW = 8
 EPOCHS = 50
 
-
 search_space = {
-    "size": [4, 8, 16, 32, 64],
-    "num_blocks": [1, 2, 3, 4, 5, 6],
+    "size": [32, 64, 128],
+    "num_blocks": [3, 4, 5, 6],
     "kernel_size": [3, 5, 7, 9],
     "patch_size": [20, 25, 30],
 }
@@ -53,15 +52,15 @@ if __name__ == "__main__":
                         gpus=1,
                         max_epochs=EPOCHS,
                         callbacks=[
-                            ModelCheckpoint(
-                                monitor="val/val_loss",
-                                mode="min",
-                                dirpath=f"models/model{hyp_print}",
-                                filename="radar-epoch{epoch:02d}-val_loss{val/val_loss:.2f}",
-                                auto_insert_metric_name=False,
-                            ),
+                            # ModelCheckpoint(
+                            #     monitor="val/val_loss",
+                            #     mode="min",
+                            #     dirpath=f"models/model{hyp_print}",
+                            #     filename="radar-epoch{epoch:02d}-val_loss{val/val_loss:.2f}",
+                            #     auto_insert_metric_name=False,
+                            # ),
                             EarlyStopping(monitor="val/val_loss", patience=10),
-                            LearningRateMonitor(logging_interval="step"),
+                            # LearningRateMonitor(logging_interval="step"),
                         ],
                     )
                     trainer.fit(main_model, train_dataloaders=train_, val_dataloaders=val_)
