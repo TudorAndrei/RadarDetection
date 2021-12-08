@@ -12,24 +12,6 @@ argglobal
 %argdel
 $argadd trainer.py
 edit lightning.py
-let s:save_splitbelow = &splitbelow
-let s:save_splitright = &splitright
-set splitbelow splitright
-wincmd _ | wincmd |
-vsplit
-1wincmd h
-wincmd w
-let &splitbelow = s:save_splitbelow
-let &splitright = s:save_splitright
-wincmd t
-let s:save_winminheight = &winminheight
-let s:save_winminwidth = &winminwidth
-set winminheight=0
-set winheight=1
-set winminwidth=0
-set winwidth=1
-exe 'vert 1resize ' . ((&columns * 95 + 95) / 190)
-exe 'vert 2resize ' . ((&columns * 94 + 95) / 190)
 argglobal
 balt ~/projects/mst/dl/radar/create_submission.py
 setlocal fdm=indent
@@ -40,69 +22,40 @@ setlocal fdl=99
 setlocal fml=1
 setlocal fdn=20
 setlocal fen
-27
+32
 normal! zo
-33
+37
 normal! zo
-34
+38
 normal! zo
-35
+39
 normal! zo
-36
-normal! zo
-53
-normal! zo
-56
+40
 normal! zo
 let s:l = 48 - ((31 * winheight(0) + 25) / 51)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
 keepjumps 48
-normal! 048|
-wincmd w
-argglobal
-if bufexists("convmixer_expanded.py") | buffer convmixer_expanded.py | else | edit convmixer_expanded.py | endif
-if &buftype ==# 'terminal'
-  silent file convmixer_expanded.py
-endif
-balt ~/projects/mst/dl/radar/create_submission.py
-setlocal fdm=indent
-setlocal fde=0
-setlocal fmr={{{,}}}
-setlocal fdi=#
-setlocal fdl=99
-setlocal fml=1
-setlocal fdn=20
-setlocal fen
-let s:l = 1 - ((0 * winheight(0) + 25) / 51)
-if s:l < 1 | let s:l = 1 | endif
-keepjumps exe s:l
-normal! zt
-keepjumps 1
-normal! 0
-wincmd w
-2wincmd w
-exe 'vert 1resize ' . ((&columns * 95 + 95) / 190)
-exe 'vert 2resize ' . ((&columns * 94 + 95) / 190)
+normal! 021|
 tabnext 1
-badd +48 lightning.py
+badd +0 lightning.py
 badd +1 trainer.py
-badd +12 data_utils.py
 badd +1 ~/projects/mst/dl/radar/create_submission.py
-badd +0 convmixer_expanded.py
+badd +12 data_utils.py
 if exists('s:wipebuf') && len(win_findbuf(s:wipebuf)) == 0 && getbufvar(s:wipebuf, '&buftype') isnot# 'terminal'
   silent exe 'bwipe ' . s:wipebuf
 endif
 unlet! s:wipebuf
 set winheight=1 winwidth=20 shortmess=filnxtToOFcI
-let &winminheight = s:save_winminheight
-let &winminwidth = s:save_winminwidth
 let s:sx = expand("<sfile>:p:r")."x.vim"
 if filereadable(s:sx)
   exe "source " . fnameescape(s:sx)
 endif
 let &g:so = s:so_save | let &g:siso = s:siso_save
+nohlsearch
+let g:this_session = v:this_session
+let g:this_obsession = v:this_session
 doautoall SessionLoadPost
 unlet SessionLoad
 " vim: set ft=vim :

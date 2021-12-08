@@ -24,11 +24,13 @@ def data_generator(img_dir, csv_path, bs=4, nw=1):
         batch_size=bs,
         shuffle=False,
         num_workers=nw,
+        pin_memory=True
     ), DataLoader(
         RadarDataset(img_dir, val_samples),
         batch_size=bs,
         shuffle=False,
         num_workers=nw,
+        pin_memory=True
     )
 
 

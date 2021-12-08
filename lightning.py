@@ -1,23 +1,29 @@
 import pretty_errors
 import pytorch_lightning as pl
+from convmixer import ConvMixerModule
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 
-# from convmixer import ConvMixerModule
-from convmixer_expanded import ConvMixerModule
 from data_utils import data_generator
 
-pl.seed_everything(42)
+# pl.seed_everything(42)
 
 BATCH_SIZE = 128
 NW = 8
-EPOCHS = 50
+EPOCHS = 100
 
 search_space = {
     "size": [32, 64, 128],
     "num_blocks": [3, 4, 5, 6],
     "kernel_size": [3, 5, 7, 9],
     "patch_size": [20, 25, 30],
+}
+
+search_space = {
+    "size": [32],
+    "num_blocks": [4],
+    "kernel_size": [3],
+    "patch_size": [11],
 }
 
 
@@ -27,11 +33,10 @@ if __name__ == "__main__":
         img_dir="./train", csv_path=r"train.csv", bs=BATCH_SIZE, nw=NW
     )
 
-
-    for size in search_space['size']:
-        for num_blocks in search_space['num_blocks']:
-            for kernel_size in search_space['kernel_size']:
-                for patch_size in search_space['patch_size']:
+    for size in search_space["size"]:
+        for num_blocks in search_space["num_blocks"]:
+            for kernel_size in search_space["kernel_size"]:
+                for patch_size in search_space["patch_size"]:
                     hyps = {
                         "size": size,
                         "num_blocks": num_blocks,
@@ -50,17 +55,22 @@ if __name__ == "__main__":
                         # fast_dev_run=True,
                         # benchmark=True,
                         gpus=1,
+                        precision=16,
                         max_epochs=EPOCHS,
                         callbacks=[
-                            # ModelCheckpoint(
-                            #     monitor="val/val_loss",
-                            #     mode="min",
-                            #     dirpath=f"models/model{hyp_print}",
-                            #     filename="radar-epoch{epoch:02d}-val_loss{val/val_loss:.2f}",
-                            #     auto_insert_metric_name=False,
-                            # ),
-                            EarlyStopping(monitor="val/val_loss", patience=10),
-                            # LearningRateMonitor(logging_interval="step"),
+                            ModelCheckpoint(
+                                monitor="val/val_loss",
+                                mode="min",
+                                dirpath=f"models/model{hyp_print}",
+                                filename="radar-epoch{epoch:02d}-val_loss{val/val_loss:.2f}",
+                                auto_insert_metric_name=False,
+                            ),
+                            EarlyStopping(monitor="val/val_loss", patience=5),
+                            LearningRateMonitor(logging_interval="step"),
                         ],
                     )
-                    trainer.fit(main_model, train_dataloaders=train_, val_dataloaders=val_)
+                    trainer.fit(
+                        main_model,
+                        train_dataloaders=train_,
+                        val_dataloaders=val_,
+                    )

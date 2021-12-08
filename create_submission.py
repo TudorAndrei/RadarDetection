@@ -5,25 +5,32 @@ import pandas as pd
 import pytorch_lightning as pl
 import torch
 
-from convmixer_expanded import ConvMixerModule
+from convmixer import ConvMixerModule
 from data_utils import get_submission_dataloader
 
 pl.seed_everything(42)
 
-BATCH_SIZE = 64
+BATCH_SIZE = 128
 NW = 1
 sub_dir = "submissions"
 
-best_model_path = f"models/model_size_16_num_blocks_3_kernel_size_3_patch_size_9_num_classes_5_lr_0.003_res_type_cat/radar-epoch11-val_loss1.32.ckpt"
+best_model_path = f"models/model_size_512_num_blocks_5_kernel_size_3_patch_size_11_num_classes_5_lr_0.003_res_type_add/radar-epoch13-val_loss1.20.ckpt"
+
+search_space = {
+    "size": [512],
+    "num_blocks": [5],
+    "kernel_size": [3],
+    "patch_size": [11],
+}
 
 hyps = {
-    "size": 16,
-    "num_blocks": 3,
-    "kernel_size": 3,
-    "patch_size": 9,
+    "size": search_space['size'][0],
+    "num_blocks": search_space['num_blocks'][0],
+    "kernel_size": search_space['kernel_size'][0],
+    "patch_size": search_space['patch_size'][0],
     "num_classes": 5,
     "lr": 0.003,
-    "res_type": "cat"
+    "res_type": "add"
 }
 
 hyp_print = ''

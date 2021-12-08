@@ -12,6 +12,7 @@ class ResidualBlock(nn.Module):
     def forward(self, x):
         return self.layers(x) + x
 
+
 class ConcatBlock(nn.Module):
     def __init__(self, layers):
         super().__init__()
@@ -37,15 +38,17 @@ class GeluBatch(nn.Module):
     def __init__(self, size) -> None:
         super().__init__()
         self.gelu = nn.GELU()
+        # self.drop = nn.Dropout(0)
         self.norm = nn.BatchNorm2d(size)
 
     def forward(self, x):
         out = self.gelu(x)
+        # out= self.drop(out)
         return self.norm(out)
 
 
 class DepthConv2d(nn.Module):
-    def __init__(self, channels, kernel_size, padding):
+    def __init__(self, channels, kernel_size, p=0.3, padding="same"):
         super().__init__()
         self.conv = nn.Conv2d(
             in_channels=channels,
@@ -54,22 +57,24 @@ class DepthConv2d(nn.Module):
             groups=channels,
             padding=padding,
         )
+        self.drop = nn.Dropout(p)
 
     def forward(self, x):
-        return self.conv(x)
+        return self.drop(self.conv(x))
 
 
 class PointConv2d(nn.Module):
-    def __init__(self, in_channels, out_channels):
+    def __init__(self, in_channels, out_channels, p=0.3):
         super().__init__()
         self.conv = nn.Conv2d(
             in_channels,
             out_channels,
             kernel_size=1,
         )
+        self.drop = nn.Dropout(p)
 
     def forward(self, x):
-        return self.conv(x)
+        return self.drop(self.conv(x))
 
 
 class ConvMixerLayer(nn.Module):
@@ -81,7 +86,7 @@ class ConvMixerLayer(nn.Module):
                 nn.Sequential(
                     ResidualBlock(
                         [
-                            DepthConv2d(size, kernel_size, "same"),
+                            DepthConv2d(size, kernel_size),
                             GeluBatch(size),
                         ]
                     ),
@@ -113,25 +118,21 @@ class ConvMixer(nn.Module):
 
 
 class ConvRepeaterLayer(nn.Module):
-    def __init__(self, size, num_blocks, kernel_size=9, res_type="add"):
+    def __init__(self, size, num_blocks, kernel_size=9):
         super().__init__()
-        if res_type == "add":
-            self.residual = ResidualBlock
-        elif res_type == "cat":
-            self.residual = ConcatBlock
-            size = [size]
+        self.residual = ConcatBlock
+        size = [size]
 
-            for i in range(1, num_blocks + 1):
-                size.append(2 * size[i - 1])
+        for i in range(1, num_blocks + 1):
+            size.append(2 * size[i - 1])
 
         print(size)
-
         self.conv_mixer = nn.Sequential(
             *[
                 nn.Sequential(
                     self.residual(
                         [
-                            DepthConv2d(size[i], kernel_size, "same"),
+                            DepthConv2d(size[i], kernel_size),
                             GeluBatch(size[i]),
                         ]
                     ),
@@ -148,13 +149,18 @@ class ConvRepeaterLayer(nn.Module):
 
 class ConvRepeater(nn.Module):
     def __init__(
-        self, size, num_blocks, kernel_size, patch_size, num_classes, res_type
+        self,
+        size,
+        num_blocks,
+        kernel_size,
+        patch_size,
+        num_classes,
     ):
         super().__init__()
         self.layers = nn.Sequential(
             PatchEmbedding(size, patch_size=patch_size),
             GeluBatch(size),
-            ConvRepeaterLayer(size, num_blocks, kernel_size, res_type),
+            ConvRepeaterLayer(size, num_blocks, kernel_size),
             nn.AdaptiveAvgPool2d((1, 1)),
             nn.Flatten(),
             nn.Linear(size * (2 ** num_blocks), num_classes),
@@ -162,6 +168,7 @@ class ConvRepeater(nn.Module):
 
     def forward(self, x):
         return self.layers(x)
+
 
 class ConvMixerModule(pl.LightningModule):
     def __init__(
@@ -176,16 +183,21 @@ class ConvMixerModule(pl.LightningModule):
     ):
         super().__init__()
         self.lr = lr
-        if res_type == 'add':
-
+        self.save_hyperparameters()
+        if res_type == "add":
+            print("using ConvMixer")
             self.model = ConvMixer(
                 size, num_blocks, kernel_size, patch_size, num_classes
             )
-        elif res_type == 'cat':
+        elif res_type == "cat":
+            print("using ConvRepeater")
             self.model = ConvRepeater(
-                size, num_blocks, kernel_size, patch_size, num_classes, res_type
+                size,
+                num_blocks,
+                kernel_size,
+                patch_size,
+                num_classes,
             )
-
 
         self.lossf = torch.nn.CrossEntropyLoss()
 
@@ -198,7 +210,7 @@ class ConvMixerModule(pl.LightningModule):
             "optimizer": optimizer,
             "lr_scheduler": {
                 "scheduler": scheduler,
-                "monitor": "pt/val_loss",
+                "monitor": "val/val_loss",
                 "interval": "epoch",
             },
         }
