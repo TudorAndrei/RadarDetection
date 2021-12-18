@@ -1,0 +1,61 @@
+---
+title: "Detect targets in radar signals "
+author: "Tudor Andrei Dumitrascu"
+geometry: margin=2cm
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+fontsize: 10pt
+bibliography: ref.bib
+documentclass: article
+cls: ieee-with-url.csl
+output:
+ pdf_document:
+  number_sections: true
+---
+
+
+# Begin
+
+
+@anonymous2022patches
+
+
+# Bibliography {-}
+
+<div id="refs"></div>
+
+# Appendix {-}
+
+```{python, eval=FALSE,  code = readLines("../convmixer.py")}
+```
+
+```{python, eval=FALSE,  code = readLines("../lightning.py")}
+```
+
+```{python, eval=FALSE,  code = readLines("../create_submission.py")}
+```
+
+```{python, eval=FALSE,  code = readLines("../data_utils.py")}
+```
+
+
+<!-- \begin{figure} -->
+<!--   \includegraphics[width=10cm]{./images/genres_distribution.png} -->
+<!--   \caption{Genres Distribution} -->
+<!--   \label{fig:distribution} -->
+
+<!-- \end{figure} -->
+
+<!-- \begin{figure} -->
+<!--   \centering -->
+<!--   \begin{subfigure}[b]{0.4\linewidth} -->
+<!--     \includegraphics[width=\linewidth]{./images/kmeans_pca.png} -->
+<!--     \caption{Kmeans PCA} -->
+<!--   \end{subfigure} -->
+<!--   \begin{subfigure}[b]{0.4\linewidth} -->
+<!--     \includegraphics[width=\linewidth]{./images/kmeans_tsne.png} -->
+<!--     \caption{Kmens t-SNE} -->
+<!--   \end{subfigure} -->
+<!--   \caption{Kmeans with Dimensionality reduction} -->
+<!--   \label{fig:kmeans} -->
+<!-- \end{figure} -->
+

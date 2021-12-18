@@ -1,12 +1,14 @@
 import os
-import pretty_errors
 
 import pandas as pd
+import pretty_errors
 import pytorch_lightning as pl
 import torch
+from torchvision.transforms import ConvertImageDtype, Normalize, Pad, ToTensor
+from torchvision import transforms
 
-from convmixer import ConvMixerModule
 from data_utils import get_submission_dataloader
+from lightning_models import ViTLigthning
 
 pl.seed_everything(42)
 
@@ -14,26 +16,34 @@ BATCH_SIZE = 128
 NW = 1
 sub_dir = "submissions"
 
-best_model_path = f"models/model_size_512_num_blocks_5_kernel_size_3_patch_size_11_num_classes_5_lr_0.003_res_type_add/radar-epoch13-val_loss1.20.ckpt"
+best_model_path = f"models/vit/radar-epoch36-val_loss1.61.ckpt"
 
-search_space = {
-    "size": [512],
-    "num_blocks": [5],
-    "kernel_size": [3],
-    "patch_size": [11],
-}
+
+trans_ = transforms.Compose(
+    [
+        ToTensor(),
+        Pad(
+            [5, 0, 4, 0],
+        ),
+        # Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ConvertImageDtype(torch.float),
+    ]
+)
 
 hyps = {
-    "size": search_space['size'][0],
-    "num_blocks": search_space['num_blocks'][0],
-    "kernel_size": search_space['kernel_size'][0],
-    "patch_size": search_space['patch_size'][0],
     "num_classes": 5,
-    "lr": 0.003,
-    "res_type": "add"
+    "image_size": (128, 64),
+    "patch_size": (32, 32),
+    "lr": 0.03,
+    "dim": 128,
+    "depth": 15,
+    "heads": 10,
+    "mlp_dim": 2048,
+    "dropout": 0.1,
+    "emb_dropout": 0.1,
 }
 
-hyp_print = ''
+hyp_print = ""
 for key, value in hyps.items():
     hyp_print += f"_{key}_{value}"
 
@@ -43,17 +53,14 @@ if __name__ == "__main__":
     file_name = lambda x: x.split("/")[-1]
 
     model_name = best_model_path.split("/")[-1]
-    model = ConvMixerModule(**hyps).load_from_checkpoint(
-        best_model_path, **hyps
-    )
+    model = ViTLigthning(**hyps).load_from_checkpoint(best_model_path, **hyps)
 
     model.eval()
     model.freeze()
     preds = []
-    data = get_submission_dataloader(img_dir, BATCH_SIZE, NW)
+    data = get_submission_dataloader(img_dir, BATCH_SIZE, NW, transform=trans_)
     for batch in data:
         img, img_path = batch
-        img = img.permute(0, 3, 1, 2).float()
         out = model(img)
         predictions = torch.argmax(out, 1).numpy()
         # print(predictions)

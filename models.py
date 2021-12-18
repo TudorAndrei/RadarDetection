@@ -1,7 +1,48 @@
 import torch
 import torch.nn as nn
-import pytorch_lightning as pl
-import torchmetrics as tm
+from torch.nn import (
+    AdaptiveMaxPool2d,
+    Conv2d,
+    Flatten,
+    Linear,
+    MaxPool2d,
+    ReLU
+)
+from torch.nn.modules.activation import GELU
+
+
+class PrintLayer(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        print(x.shape)
+        return x
+
+
+class DoubleConvBlock(torch.nn.Module):
+    def __init__(self, in_ch, out_ch, kernel_size, strides, padding):
+        super().__init__()
+        self.layers = nn.Sequential(
+            Conv2d(
+                in_ch,
+                out_ch,
+                kernel_size=kernel_size,
+                stride=strides,
+                padding=padding,
+            ),
+            GeluBatch(out_ch),
+            Conv2d(
+                out_ch,
+                out_ch,
+                kernel_size=kernel_size,
+                stride=strides,
+                padding=padding,
+            ),
+        )
+
+    def forward(self, x):
+        return self.layers(x)
 
 
 class ResidualBlock(nn.Module):
@@ -26,9 +67,7 @@ class ConcatBlock(nn.Module):
 class PatchEmbedding(nn.Module):
     def __init__(self, size, patch_size) -> None:
         super().__init__()
-        self.patch = nn.Conv2d(
-            3, size, kernel_size=patch_size, stride=patch_size
-        )
+        self.patch = nn.Conv2d(3, size, kernel_size=patch_size, stride=patch_size)
 
     def forward(self, x):
         return self.patch(x)
@@ -37,7 +76,8 @@ class PatchEmbedding(nn.Module):
 class GeluBatch(nn.Module):
     def __init__(self, size) -> None:
         super().__init__()
-        self.gelu = nn.GELU()
+        # self.gelu = GELU()
+        self.gelu = ReLU()
         # self.drop = nn.Dropout(0)
         self.norm = nn.BatchNorm2d(size)
 
@@ -102,7 +142,15 @@ class ConvMixerLayer(nn.Module):
 
 
 class ConvMixer(nn.Module):
-    def __init__(self, size, num_blocks, kernel_size, patch_size, num_classes):
+    def __init__(
+        self,
+        size,
+        num_blocks,
+        kernel_size,
+        patch_size,
+        num_classes,
+        op="classification",
+    ):
         super().__init__()
         self.layers = nn.Sequential(
             PatchEmbedding(size, patch_size=patch_size),
@@ -110,11 +158,17 @@ class ConvMixer(nn.Module):
             ConvMixerLayer(size, num_blocks, kernel_size),
             nn.AdaptiveAvgPool2d((1, 1)),
             nn.Flatten(),
-            nn.Linear(size, num_classes),
         )
 
+        if op == "classification":
+            self.op = nn.Linear(size, num_classes)
+        elif op == "regression":
+            self.op = nn.Sequential(nn.Linear(size, 1))
+
     def forward(self, x):
-        return self.layers(x)
+        out = self.layers(x)
+        # print(out.shape)
+        return self.op(out)
 
 
 class ConvRepeaterLayer(nn.Module):
@@ -126,7 +180,7 @@ class ConvRepeaterLayer(nn.Module):
         for i in range(1, num_blocks + 1):
             size.append(2 * size[i - 1])
 
-        print(size)
+        # print(size)
         self.conv_mixer = nn.Sequential(
             *[
                 nn.Sequential(
@@ -155,6 +209,7 @@ class ConvRepeater(nn.Module):
         kernel_size,
         patch_size,
         num_classes,
+        op="classification",
     ):
         super().__init__()
         self.layers = nn.Sequential(
@@ -163,93 +218,79 @@ class ConvRepeater(nn.Module):
             ConvRepeaterLayer(size, num_blocks, kernel_size),
             nn.AdaptiveAvgPool2d((1, 1)),
             nn.Flatten(),
-            nn.Linear(size * (2 ** num_blocks), num_classes),
         )
 
+        if op == "classification":
+            self.op = nn.Linear(size * (2 ** num_blocks), num_classes)
+        elif op == "regression":
+            self.op = nn.Linear(size * (2 ** num_blocks), 1)
+
     def forward(self, x):
-        return self.layers(x)
+        out = self.layers(x)
+        return self.op(out)
 
 
-class ConvMixerModule(pl.LightningModule):
+class CNN(torch.nn.Module):
     def __init__(
         self,
-        size=5,
-        num_blocks=2,
-        kernel_size=15,
-        patch_size=15,
-        num_classes=5,
-        lr=0.003,
-        res_type="add",
+        num_blocks,
+        size,
+        kernel_size,
+        strides,
+        padding,
     ):
         super().__init__()
-        self.lr = lr
-        self.save_hyperparameters()
-        if res_type == "add":
-            print("using ConvMixer")
-            self.model = ConvMixer(
-                size, num_blocks, kernel_size, patch_size, num_classes
-            )
-        elif res_type == "cat":
-            print("using ConvRepeater")
-            self.model = ConvRepeater(
-                size,
-                num_blocks,
-                kernel_size,
-                patch_size,
-                num_classes,
-            )
-
-        self.lossf = torch.nn.CrossEntropyLoss()
-
-    def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, threshold=5
+        self.num_blocks = num_blocks
+        self.residual = ResidualBlock
+        print(size)
+        self.layers = nn.Sequential(
+            *[
+                nn.Sequential(
+                    Conv2d(
+                        size[i],
+                        size[i + 1],
+                        kernel_size=kernel_size,
+                        stride=strides,
+                        padding=padding,
+                    ),
+                    GeluBatch(size[i + 1]),
+                )
+                for i in range(len(size) - 1)
+            ],
+            Flatten(),
         )
-        return {
-            "optimizer": optimizer,
-            "lr_scheduler": {
-                "scheduler": scheduler,
-                "monitor": "val/val_loss",
-                "interval": "epoch",
-            },
-        }
+        self.flattened = 64 * 16 * 8
+        self.linear = Linear(self.flattened, 1024)
+        self.classifier = Linear(1024, 5)
 
     def forward(self, x):
-        return self.model(x)
+        out = self.layers(x)
+        out = self.linear(out)
+        out = self.classifier(out)
+        return out
 
-    def training_step(self, batch, _):
-        img, label = batch
-        img = img.float().permute(0, 3, 1, 2)
-        label = label
-        output = self.model(img)
-        loss = self.lossf(output, label)
-        predict = output.argmax(1)
-        acc = tm.functional.accuracy(predict, label)
-        self.log("train/train_accuracy", acc, on_step=False, on_epoch=True)
-        self.log(
-            "train/train_loss",
-            loss,
-            prog_bar=True,
-            on_step=False,
-            on_epoch=True,
+
+class ADNet(torch.nn.Module):
+    def __init__(
+        self,
+        num_classes=5,
+    ):
+        super().__init__()
+        self.in_size = 3
+        self.residual = ResidualBlock
+        self.layers = nn.Sequential(
+            DoubleConvBlock(3, 128, kernel_size=3, strides=1, padding=1),
+            MaxPool2d(2, stride=(2, 1)),
+            DoubleConvBlock(128, 128, kernel_size=3, strides=1, padding=1),
+            MaxPool2d(2, stride=(2, 1)),
+            PointConv2d(128, 128, p=0),
+            AdaptiveMaxPool2d((1, 1)),
+            Flatten(),
         )
-        return loss
+        self.flattened = 128
+        self.classifier = Linear(self.flattened, num_classes)
 
-    def validation_step(self, batch, _):
-        img, label = batch
-        img = img.float().permute(0, 3, 1, 2)
-        label = label
-        output = self.model(img)
-        predict = output.argmax(1)
-        acc = tm.functional.accuracy(predict, label)
-        loss = self.lossf(output, label)
-        return {"val_loss": loss, "val_accuracy": acc}
-
-    def validation_epoch_end(self, out):
-        acc = torch.stack([acc["val_accuracy"] for acc in out]).mean()
-        loss = torch.stack([acc["val_loss"] for acc in out]).mean()
-        self.log("val/val_accuracy", acc, on_step=False, on_epoch=True)
-        self.log(
-            "val/val_loss", loss, prog_bar=True, on_step=False, on_epoch=True
-        )
+    def forward(self, x):
+        out = self.layers(x)
+        out = self.classifier(out)
+        return out

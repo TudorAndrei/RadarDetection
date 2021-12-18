@@ -28,5 +28,3 @@ class Model(torch.nn.Module):
         out = out.reshape(-1, self.flatten_size)
         out = self.cls(out)
         return out
-
-

@@ -1,3 +1,3 @@
 #!/bin/sh
 
-tensorboard --logdir=lightning_logs
+tensorboard --logdir=tb_logs
