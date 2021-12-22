@@ -238,11 +238,13 @@ class CNN(torch.nn.Module):
         kernel_size,
         strides,
         padding,
+        op='classification',
+        num_classes=5
     ):
         super().__init__()
         self.num_blocks = num_blocks
         self.residual = ResidualBlock
-        print(size)
+        # print(size)
         self.layers = nn.Sequential(
             *[
                 nn.Sequential(
@@ -261,12 +263,16 @@ class CNN(torch.nn.Module):
         )
         self.flattened = 64 * 16 * 8
         self.linear = Linear(self.flattened, 1024)
-        self.classifier = Linear(1024, 5)
+
+        if op == "classification":
+            self.op = nn.Linear(1024, num_classes)
+        elif op == "regression":
+            self.op = nn.Linear(1024, 1)
 
     def forward(self, x):
         out = self.layers(x)
         out = self.linear(out)
-        out = self.classifier(out)
+        out = self.op(out)
         return out
 
 

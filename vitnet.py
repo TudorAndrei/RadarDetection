@@ -20,15 +20,15 @@ EPOCHS = 100
 
 hyps = {
     "num_classes": 5,
-    "image_size": (128, 64),
-    "patch_size": (32, 32),
+    "image_size": 128,
+    "patch_size": 32,
     "lr": 0.03,
-    "dim": 128,
-    "depth": 15,
-    "heads": 10,
-    "mlp_dim": 2048,
-    "dropout": 0.1,
-    "emb_dropout": 0.1,
+    "dim": 256,
+    "depth": 20,
+    "heads": 9,
+    "mlp_dim": 256,
+    "dropout": 0.2,
+    "emb_dropout": 0.2,
 }
 
 trans_ = transforms.Compose(
@@ -66,8 +66,8 @@ if __name__ == "__main__":
                 filename="radar-epoch{epoch:02d}-val_loss{val/val_loss:.2f}",
                 auto_insert_metric_name=False,
             ),
-            EarlyStopping(monitor="val/val_loss", patience=5),
-            LearningRateMonitor(logging_interval="step"),
+            # EarlyStopping(monitor="val/val_loss", patience=5),
+            # LearningRateMonitor(logging_interval="step"),
         ],
     )
     trainer.fit(model, train_, val_)

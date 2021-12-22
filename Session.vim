@@ -11,7 +11,7 @@ set shortmess=aoO
 argglobal
 %argdel
 $argadd lightning.py
-edit vitnet.py
+edit runs.py
 let s:save_splitbelow = &splitbelow
 let s:save_splitright = &splitright
 set splitbelow splitright
@@ -28,10 +28,10 @@ set winminheight=0
 set winheight=1
 set winminwidth=0
 set winwidth=1
-exe 'vert 1resize ' . ((&columns * 127 + 127) / 254)
-exe 'vert 2resize ' . ((&columns * 126 + 127) / 254)
+exe 'vert 1resize ' . ((&columns * 126 + 127) / 254)
+exe 'vert 2resize ' . ((&columns * 127 + 127) / 254)
 argglobal
-balt lightning.py
+balt ~/projects/mst/dl/radar/lightning_models.py
 setlocal fdm=indent
 setlocal fde=0
 setlocal fmr={{{,}}}
@@ -40,29 +40,25 @@ setlocal fdl=99
 setlocal fml=1
 setlocal fdn=20
 setlocal fen
-35
+10
 normal! zo
-36
+11
 normal! zo
-46
+22
 normal! zo
-58
-normal! zo
-62
-normal! zo
-let s:l = 74 - ((50 * winheight(0) + 25) / 51)
+let s:l = 32 - ((14 * winheight(0) + 25) / 51)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
-keepjumps 74
+keepjumps 32
 normal! 0
 wincmd w
 argglobal
-if bufexists("mvnet.py") | buffer mvnet.py | else | edit mvnet.py | endif
+if bufexists("lightning.py") | buffer lightning.py | else | edit lightning.py | endif
 if &buftype ==# 'terminal'
-  silent file mvnet.py
+  silent file lightning.py
 endif
-balt create_submission.py
+balt runs.py
 setlocal fdm=indent
 setlocal fde=0
 setlocal fmr={{{,}}}
@@ -71,27 +67,27 @@ setlocal fdl=99
 setlocal fml=1
 setlocal fdn=20
 setlocal fen
-24
-normal! zo
-55
-normal! zo
-let s:l = 70 - ((49 * winheight(0) + 25) / 51)
+let s:l = 1 - ((0 * winheight(0) + 25) / 51)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
-keepjumps 70
+keepjumps 1
 normal! 0
 wincmd w
 2wincmd w
-exe 'vert 1resize ' . ((&columns * 127 + 127) / 254)
-exe 'vert 2resize ' . ((&columns * 126 + 127) / 254)
+exe 'vert 1resize ' . ((&columns * 126 + 127) / 254)
+exe 'vert 2resize ' . ((&columns * 127 + 127) / 254)
 tabnext 1
-badd +1 ~/projects/mst/dl/radar/lightning_models.py
-badd +1 lightning.py
+badd +32 runs.py
+badd +45 lightning.py
+badd +162 ~/projects/mst/dl/radar/lightning_models.py
+badd +38 data_utils.py
+badd +47 kfold.py
 badd +44 vitnet.py
-badd +8 mvnet.py
-badd +9 data_utils.py
-badd +53 create_submission.py
+badd +19 ~/projects/mst/dl/radar/models.py
+badd +13 create_submission.py
+badd +54 adnet.py
+badd +17 cnn.py
 if exists('s:wipebuf') && len(win_findbuf(s:wipebuf)) == 0 && getbufvar(s:wipebuf, '&buftype') isnot# 'terminal'
   silent exe 'bwipe ' . s:wipebuf
 endif
@@ -104,6 +100,7 @@ if filereadable(s:sx)
   exe "source " . fnameescape(s:sx)
 endif
 let &g:so = s:so_save | let &g:siso = s:siso_save
+nohlsearch
 let g:this_session = v:this_session
 let g:this_obsession = v:this_session
 doautoall SessionLoadPost

@@ -4,19 +4,17 @@ import pandas as pd
 import pretty_errors
 import pytorch_lightning as pl
 import torch
-from torchvision.transforms import ConvertImageDtype, Normalize, Pad, ToTensor
 from torchvision import transforms
+from torchvision.transforms import ConvertImageDtype, Normalize, Pad, ToTensor
 
 from data_utils import get_submission_dataloader
-from lightning_models import ViTLigthning
-
-pl.seed_everything(42)
+from lightning_models import ADNet_lightning, ViTLigthning
 
 BATCH_SIZE = 128
 NW = 1
 sub_dir = "submissions"
 
-best_model_path = f"models/vit/radar-epoch36-val_loss1.61.ckpt"
+best_model_path = f"models/adnet/radar-epoch22-val_loss1.28.ckpt"
 
 
 trans_ = transforms.Compose(
@@ -25,20 +23,12 @@ trans_ = transforms.Compose(
         Pad(
             [5, 0, 4, 0],
         ),
-        # Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         ConvertImageDtype(torch.float),
     ]
 )
 
 hyps = {
     "num_classes": 5,
-    "image_size": (128, 64),
-    "patch_size": (32, 32),
-    "lr": 0.03,
-    "dim": 128,
-    "depth": 15,
-    "heads": 10,
-    "mlp_dim": 2048,
     "dropout": 0.1,
     "emb_dropout": 0.1,
 }
@@ -52,8 +42,8 @@ if __name__ == "__main__":
     img_dir = "test/*"
     file_name = lambda x: x.split("/")[-1]
 
-    model_name = best_model_path.split("/")[-1]
-    model = ViTLigthning(**hyps).load_from_checkpoint(best_model_path, **hyps)
+    model_name = best_model_path.split("/")[-2]
+    model = ADNet_lightning().load_from_checkpoint(best_model_path)
 
     model.eval()
     model.freeze()

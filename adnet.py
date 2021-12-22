@@ -12,8 +12,9 @@ from torchvision.transforms import ConvertImageDtype, Pad, ToTensor
 
 from data_utils import data_generator
 from lightning_models import ADNet_lightning
-from models import ADNet
 
+REGRESSION = "regression"
+CLASSIFICATION = "classification"
 BATCH_SIZE = 64
 NW = 8
 EPOCHS = 100
@@ -27,7 +28,6 @@ if __name__ == "__main__":
             Pad(
                 [5, 0, 4, 0],
             ),
-            ConvertImageDtype(torch.float),
         ]
     )
     train_, val_ = data_generator(
@@ -38,21 +38,16 @@ if __name__ == "__main__":
         transform=trans_,
     )
 
-    # model = ADNet()
-    # for img, label in val_:
-    #     out = model(img)
-    #     break
-    # exit()
-    hyps = {
-        "lr": 0.003,
-    }
-
     logger = TensorBoardLogger("tb_logs", name="adnet")
-    model = ADNet_lightning()
+    hyp = {"lr": 0.003, "op": REGRESSION, "optim": "adam"}
+    # hyp = {"lr": 0.003, "op": CLASSIFICATION, "optim": "sgd"}
+    model = ADNet_lightning(**hyp)
     trainer = pl.Trainer(
         # fast_dev_run=True,
+        enable_model_summary=False,
         # benchmark=True,
         logger=logger,
+        terminate_on_nan=True,
         gpus=1,
         # precision=16,
         max_epochs=EPOCHS,
@@ -64,7 +59,7 @@ if __name__ == "__main__":
                 filename="radar-epoch{epoch:02d}-val_loss{val/val_loss:.2f}",
                 auto_insert_metric_name=False,
             ),
-            EarlyStopping(monitor="val/val_loss", patience=5),
+            # EarlyStopping(monitor="val/val_loss", patience=5),
             LearningRateMonitor(logging_interval="step"),
         ],
     )

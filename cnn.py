@@ -1,3 +1,4 @@
+import warnings
 import pretty_errors
 import pytorch_lightning as pl
 import torch
@@ -6,6 +7,8 @@ from torchvision.transforms import ConvertImageDtype, Pad, ToTensor
 
 from data_utils import data_generator
 from lightning_models import CNN_lightning
+
+warnings.filterwarnings("ignore")
 
 BATCH_SIZE = 128
 NW = 8
@@ -17,6 +20,7 @@ hyps = {
     "kernel_size": 3,
     "strides": 2,
     "padding": 1,
+    "op": "regression",
 }
 
 if __name__ == "__main__":
@@ -27,7 +31,7 @@ if __name__ == "__main__":
             Pad(
                 [5, 0, 4, 0],
             ),
-            ConvertImageDtype(torch.float),
+            # ConvertImageDtype(torch.float),
         ]
     )
     train_, val_ = data_generator(
@@ -38,12 +42,9 @@ if __name__ == "__main__":
         transform=trans_,
     )
 
-
     model = CNN_lightning(**hyps)
-    # for img, label in val_:
-    #     out = model(img)
-    #     break
     trainer = pl.Trainer(
+        # fast_dev_run=True,
         # benchmark=True,
         gpus=1,
         # precision=16,

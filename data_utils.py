@@ -1,14 +1,20 @@
-import pandas as pd
-from glob import glob
-import cv2
 import os
-from torch.utils.data import DataLoader, Dataset
+from glob import glob
+
+import cv2
+import pandas as pd
 from sklearn.model_selection import train_test_split
+from torch.utils.data import DataLoader, Dataset
 
 
 def get_submission_dataloader(img_dir, bs, nw, transform=None):
     dataset = RadarSubmission(img_dir, transform=transform)
     return DataLoader(dataset, batch_size=bs, num_workers=nw)
+
+
+def kfold_generator(img_dir, csv_path, transform=None):
+    train_samples = pd.read_csv(os.path.abspath(csv_path))
+    return RadarDataset(img_dir, train_samples, transform=transform)
 
 
 def data_generator(img_dir, csv_path, bs=4, nw=1, transform=None):
@@ -22,13 +28,13 @@ def data_generator(img_dir, csv_path, bs=4, nw=1, transform=None):
     return DataLoader(
         RadarDataset(img_dir, train_samples, transform=transform),
         batch_size=bs,
-        shuffle=False,
+        shuffle=True,
         num_workers=nw,
         pin_memory=True,
     ), DataLoader(
         RadarDataset(img_dir, val_samples, transform=transform),
         batch_size=bs,
-        shuffle=False,
+        shuffle=True,
         num_workers=nw,
         pin_memory=True,
     )
