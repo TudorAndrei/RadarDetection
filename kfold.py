@@ -13,7 +13,7 @@ from torchvision import transforms
 from torchvision.transforms import Pad, ToTensor
 
 from data_utils import kfold_generator
-from runs import runs
+from config import config
 
 logging.getLogger("pytorch_lightning").setLevel(logging.WARNING)
 
@@ -34,11 +34,10 @@ trans_ = transforms.Compose(
 )
 
 if __name__ == "__main__":
-    search = runs
     csv_path = r"train.csv"
     img_dir = "./train"
     train_dataset = kfold_generator(img_dir, csv_path, trans_)
-    for i, (name, model) in enumerate(search.items()):
+    for i, (name, model) in enumerate(config.items()):
         mmae = []
         kf = KFold(n_splits=5, random_state=42, shuffle=True).split(
             range(len(train_dataset))

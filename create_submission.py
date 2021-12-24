@@ -14,7 +14,9 @@ BATCH_SIZE = 128
 NW = 1
 sub_dir = "submissions"
 
-best_model_path = f"models/adnet/radar-epoch22-val_loss1.28.ckpt"
+from config import config
+
+best_model_path = f"models/adnet/radar-epoch17-val_loss1.23.ckpt"
 
 
 trans_ = transforms.Compose(
@@ -27,31 +29,29 @@ trans_ = transforms.Compose(
     ]
 )
 
-hyps = {
-    "num_classes": 5,
-    "dropout": 0.1,
-    "emb_dropout": 0.1,
-}
 
-hyp_print = ""
-for key, value in hyps.items():
-    hyp_print += f"_{key}_{value}"
 
 if __name__ == "__main__":
 
     img_dir = "test/*"
+    model = config["adnet"]
+    hyps = model["hyps"]
+    hyp_print = ""
+    for key, value in hyps.items():
+        hyp_print += f"_{key}_{value}"
     file_name = lambda x: x.split("/")[-1]
 
     model_name = best_model_path.split("/")[-2]
-    model = ADNet_lightning().load_from_checkpoint(best_model_path)
 
-    model.eval()
-    model.freeze()
+    module = model["model"](**hyps).load_from_checkpoint(best_model_path)
+
+    module.eval()
+    module.freeze()
     preds = []
     data = get_submission_dataloader(img_dir, BATCH_SIZE, NW, transform=trans_)
     for batch in data:
         img, img_path = batch
-        out = model(img)
+        out = module(img)
         predictions = torch.argmax(out, 1).numpy()
         # print(predictions)
         # preds = [(file_name(img_path[i]), pred + 1) for i,pred in enumerate(predictions)]

@@ -114,7 +114,7 @@ class BaseLightning(pl.LightningModule):
             "val_accuracy": acc,
             "val_f1": f1,
             "w_acc": weighted_acc,
-            "mae": mae
+            "mae": mae,
         }
 
     def validation_epoch_end(self, out):
@@ -137,6 +137,7 @@ class BaseLightning(pl.LightningModule):
 class ConvMixerLightning(BaseLightning):
     def __init__(
         self,
+        optim,
         size=5,
         num_blocks=2,
         kernel_size=15,
@@ -146,7 +147,7 @@ class ConvMixerLightning(BaseLightning):
         res_type="add",
         op="classification",
     ):
-        super().__init__(lr=lr, num_classes=num_classes, op=op)
+        super().__init__(lr=lr, num_classes=num_classes, op=op, optim=optim)
         self.op = op
         if res_type == "add":
             # print("using ConvMixer")

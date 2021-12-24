@@ -10,17 +10,31 @@ cls: ieee-with-url.csl
 output:
  pdf_document:
   number_sections: true
+  latex_engine: xelatex
 ---
 
 
-# Begin
+# Introduction
 
+# Approaches
 
-{'model': <class 'lightning_models.CNN_lightning'>, 'hyps': {'size': [3, 16, 32, 64], 'num_blocks': 1, 'kernel_size': 3, 'strides': 2, 'padding': 1, 'op': 'regression'}} : 1.9370444059371947
-{'model': <class 'lightning_models.ConvMixerLightning'>, 'hyps': {'size': 32, 'num_blocks': 4, 'kernel_size': 11, 'patch_size': 5, 'num_classes': 5, 'lr': 0.3, 'res_type': 'cat', 'op': 'classification'}} : 1.7744715690612793
-{'model': <class 'lightning_models.ConvMixerLightning'>, 'hyps': {'size': 32, 'num_blocks': 4, 'kernel_size': 11, 'patch_size': 5, 'num_classes': 5, 'lr': 0.3, 'res_type': 'add', 'op': 'classification'}} : 1.6684766292572022
-{'model': <class 'lightning_models.ADNet_lightning'>, 'hyps': {'lr': 0.003, 'op': 'regression', 'optim': 'adam'}} : 1.9370444059371947
-{'model': <class 'lightning_models.ViTLigthning'>, 'hyps': {'num_classes': 5, 'image_size': 128, 'patch_size': 32, 'lr': 0.03, 'dim': 256, 'depth': 20, 'heads': 9, 'mlp_dim': 256, 'dropout': 0.2, 'emb_dropout': 0.2}} : 1.7659256219863892
+# CNN
+
+# ADNet
+
+# ViT
+
+# ConvMixer and ConvRepeater
+
+# Cross Validation
+
+| Model        | Validation MAE |
+| ---          | :---:            |
+| CNN          | 1.93           |
+| Vit          | 1.76           |
+| ADNet        | 1.93           |
+| ConvMixer    | 1.77           |
+| ConxRepeater | 1.66           |
 
 
 # Bibliography {-}
@@ -29,28 +43,20 @@ output:
 
 # Appendix {-}
 
-```{python, eval=FALSE,  code = readLines("../convmixer.py")}
-```
 
-```{python, eval=FALSE,  code = readLines("../lightning.py")}
-```
 
-```{python, eval=FALSE,  code = readLines("../vitnet.py")}
-```
 
-```{python, eval=FALSE,  code = readLines("../runs.py")}
-```
-
-```{python, eval=FALSE,  code = readLines("../models.py")}
-```
 
 ```{python, eval=FALSE,  code = readLines("../adnet.py")}
 ```
 
-```{python, eval=FALSE,  code = readLines("../cnn.py")}
+```{python, eval=FALSE,  code = readLines("../config.py")}
 ```
 
 ```{python, eval=FALSE,  code = readLines("../kfold.py")}
+```
+
+```{python, eval=FALSE,  code = readLines("../models.py")}
 ```
 
 ```{python, eval=FALSE,  code = readLines("../lightning_models.py")}
@@ -60,6 +66,9 @@ output:
 ```
 
 ```{python, eval=FALSE,  code = readLines("../data_utils.py")}
+```
+
+```{python, eval=FALSE,  code = readLines("../grid_search.py")}
 ```
 
 

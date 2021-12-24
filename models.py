@@ -1,13 +1,6 @@
 import torch
 import torch.nn as nn
-from torch.nn import (
-    AdaptiveMaxPool2d,
-    Conv2d,
-    Flatten,
-    Linear,
-    MaxPool2d,
-    ReLU
-)
+from torch.nn import AdaptiveMaxPool2d, Conv2d, Flatten, Linear, MaxPool2d, ReLU, Dropout
 from torch.nn.modules.activation import GELU
 
 
@@ -18,31 +11,6 @@ class PrintLayer(torch.nn.Module):
     def forward(self, x):
         print(x.shape)
         return x
-
-
-class DoubleConvBlock(torch.nn.Module):
-    def __init__(self, in_ch, out_ch, kernel_size, strides, padding):
-        super().__init__()
-        self.layers = nn.Sequential(
-            Conv2d(
-                in_ch,
-                out_ch,
-                kernel_size=kernel_size,
-                stride=strides,
-                padding=padding,
-            ),
-            GeluBatch(out_ch),
-            Conv2d(
-                out_ch,
-                out_ch,
-                kernel_size=kernel_size,
-                stride=strides,
-                padding=padding,
-            ),
-        )
-
-    def forward(self, x):
-        return self.layers(x)
 
 
 class ResidualBlock(nn.Module):
@@ -74,17 +42,44 @@ class PatchEmbedding(nn.Module):
 
 
 class GeluBatch(nn.Module):
-    def __init__(self, size) -> None:
+    def __init__(self, size, p=0.3) -> None:
         super().__init__()
-        # self.gelu = GELU()
-        self.gelu = ReLU()
-        # self.drop = nn.Dropout(0)
+        self.gelu = GELU()
+        # self.gelu = ReLU()
+        self.drop = nn.Dropout(p)
         self.norm = nn.BatchNorm2d(size)
 
     def forward(self, x):
-        out = self.gelu(x)
-        # out= self.drop(out)
-        return self.norm(out)
+        x = self.gelu(x)
+        x = self.drop(x)
+        # x =  self.norm(x)
+        return x
+
+class DoubleConvBlock(torch.nn.Module):
+    def __init__(self, in_ch, out_ch, kernel_size, strides, padding):
+        super().__init__()
+        self.layers = nn.Sequential(
+            Conv2d(
+                in_ch,
+                out_ch,
+                kernel_size=kernel_size,
+                stride=strides,
+                padding=padding,
+            ),
+            GeluBatch(out_ch),
+            Conv2d(
+                out_ch,
+                out_ch,
+                kernel_size=kernel_size,
+                stride=strides,
+                padding=padding,
+            ),
+            Dropout(0.3)
+        )
+
+    def forward(self, x):
+        x = self.layers(x)
+        return x
 
 
 class DepthConv2d(nn.Module):
@@ -172,26 +167,27 @@ class ConvMixer(nn.Module):
 
 
 class ConvRepeaterLayer(nn.Module):
-    def __init__(self, size, num_blocks, kernel_size=9):
+    def __init__(self, size, num_blocks, p, kernel_size=9):
         super().__init__()
         self.residual = ConcatBlock
         size = [size]
 
+
         for i in range(1, num_blocks + 1):
             size.append(2 * size[i - 1])
 
-        # print(size)
+        print(size)
         self.conv_mixer = nn.Sequential(
             *[
                 nn.Sequential(
                     self.residual(
                         [
                             DepthConv2d(size[i], kernel_size),
-                            GeluBatch(size[i]),
+                            GeluBatch(size[i], p),
                         ]
                     ),
                     PointConv2d(size[i + 1], size[i + 1]),
-                    GeluBatch(size[i + 1]),
+                    GeluBatch(size[i + 1], p),
                 )
                 for i in range(num_blocks)
             ]
@@ -210,12 +206,13 @@ class ConvRepeater(nn.Module):
         patch_size,
         num_classes,
         op="classification",
+        p=0.3,
     ):
         super().__init__()
         self.layers = nn.Sequential(
             PatchEmbedding(size, patch_size=patch_size),
-            GeluBatch(size),
-            ConvRepeaterLayer(size, num_blocks, kernel_size),
+            GeluBatch(size, p=0.3),
+            ConvRepeaterLayer(size, num_blocks, p, kernel_size),
             nn.AdaptiveAvgPool2d((1, 1)),
             nn.Flatten(),
         )
@@ -238,13 +235,14 @@ class CNN(torch.nn.Module):
         kernel_size,
         strides,
         padding,
-        op='classification',
-        num_classes=5
+        op="classification",
+        num_classes=5,
     ):
         super().__init__()
         self.num_blocks = num_blocks
         self.residual = ResidualBlock
         # print(size)
+        self.hidden = 1024
         self.layers = nn.Sequential(
             *[
                 nn.Sequential(
@@ -261,13 +259,14 @@ class CNN(torch.nn.Module):
             ],
             Flatten(),
         )
-        self.flattened = 64 * 16 * 8
-        self.linear = Linear(self.flattened, 1024)
+        # self.flattened = 64 * 16 * 8
+        self.flattened = 4096
+        self.linear = Linear(self.flattened, self.hidden)
 
         if op == "classification":
-            self.op = nn.Linear(1024, num_classes)
+            self.op = nn.Linear(self.hidden, num_classes)
         elif op == "regression":
-            self.op = nn.Linear(1024, 1)
+            self.op = nn.Linear(self.hidden, 1)
 
     def forward(self, x):
         out = self.layers(x)

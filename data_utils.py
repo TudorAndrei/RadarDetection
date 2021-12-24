@@ -34,7 +34,7 @@ def data_generator(img_dir, csv_path, bs=4, nw=1, transform=None):
     ), DataLoader(
         RadarDataset(img_dir, val_samples, transform=transform),
         batch_size=bs,
-        shuffle=True,
+        # shuffle=True,
         num_workers=nw,
         pin_memory=True,
     )
@@ -50,8 +50,7 @@ class RadarSubmission(Dataset):
     def __getitem__(self, idx):
         img_path = self.img_paths[idx]
         img = cv2.imread(img_path)
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        # img = img / 255
+        # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         if self.transform:
             img = self.transform(img)
         return img, self.img_paths[idx]
