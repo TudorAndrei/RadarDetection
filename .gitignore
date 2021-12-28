@@ -133,3 +133,4 @@ models/
 tb_logs/
 kfold/
 submissions/
+kfold_logs/

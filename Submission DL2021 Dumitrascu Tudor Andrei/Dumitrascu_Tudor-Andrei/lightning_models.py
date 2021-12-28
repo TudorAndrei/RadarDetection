@@ -1,6 +1,8 @@
 import pytorch_lightning as pl
 import torch
 import torchmetrics as tm
+from torch.optim import Adam
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from vit_pytorch import ViT
 
 from models import CNN, ADNet, ConvMixer, ConvRepeater
@@ -10,6 +12,14 @@ CLASSIFICATION = "classification"
 
 
 def get_means(array, keys):
+    """Get the mean values across the training loop
+
+
+
+    Args:
+        array: an array of outputs
+        keys: metric names
+    """
     means = []
     for key in keys:
         means.append(torch.stack([x[key] for x in array]).mean())
@@ -17,48 +27,54 @@ def get_means(array, keys):
 
 
 def get_regression_output(output):
+    """Get the prediction of the regression
+
+
+    Args:
+        output: an integer value in the [0,4] interval
+    """
     output = torch.round(output)
     output = torch.clamp(output, min=0, max=4)
     return output
 
 
 class BaseLightning(pl.LightningModule):
-    def __init__(self, num_classes=5, lr=0.03, op=CLASSIFICATION, optim="adam"):
+    def __init__(self, num_classes=5, lr=0.03, op=CLASSIFICATION):
+        """A base class which will be inherited
+
+        Contains boilerplate code
+
+        Args:
+            num_classes: number of outputs (5 for classif and 1 for regression )
+            lr: learning rate
+            op: classification or regression
+        """
         super().__init__()
         self.lr = lr
         self.op = op
+        # save the hyperparameters to the tensorboard
         self.save_hyperparameters()
         self.num_classes = num_classes
-        self.optim = optim
         self.num_outputs = num_classes
         if self.op == REGRESSION:
             self.num_outputs = 1
 
+        # set the loss function
         self.lossf = torch.nn.CrossEntropyLoss()
         if self.op == "regression":
             self.lossf = torch.nn.MSELoss()
-        # print(f"Operation is {self.op}")
 
     def configure_optimizers(self):
-        if self.optim == "sgd":
-            optimizer = torch.optim.SGD(
-                self.parameters(), momentum=0.9, lr=self.lr, nesterov=True
-            )
-            return {"optimizer": optimizer}
-
-        else:
-            optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
-            scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-                optimizer, threshold=5, factor=0.5
-            )
-            return {
-                "optimizer": optimizer,
-                "lr_scheduler": {
-                    "scheduler": scheduler,
-                    "monitor": "train/train_loss",
-                    "interval": "epoch",
-                },
-            }
+        optimizer = Adam(self.parameters(), lr=self.lr)
+        scheduler = ReduceLROnPlateau(optimizer, threshold=5, factor=0.5)
+        return {
+            "optimizer": optimizer,
+            "lr_scheduler": {
+                "scheduler": scheduler,
+                "monitor": "train/train_loss",
+                "interval": "epoch",
+            },
+        }
 
     def training_step(self, batch, _):
         img, label = batch
@@ -74,6 +90,7 @@ class BaseLightning(pl.LightningModule):
             predict = get_regression_output(output)
 
         loss = self.lossf(output, label)
+        # the torchmetrics works with int values
         predict = predict.int()
         label = label.int()
         acc = tm.functional.accuracy(predict, label)
@@ -101,6 +118,7 @@ class BaseLightning(pl.LightningModule):
 
         loss = self.lossf(output, label)
 
+        # the torchmetrics works with int values
         predict = predict.int()
         label = label.int()
         acc = tm.functional.accuracy(predict, label)
@@ -118,6 +136,7 @@ class BaseLightning(pl.LightningModule):
         }
 
     def validation_epoch_end(self, out):
+        # Log the validation metrics at the end of the epoch
         acc, loss, f1, w_acc, mae = get_means(
             out, ["val_accuracy", "val_loss", "val_f1", "w_acc", "mae"]
         )
@@ -137,7 +156,6 @@ class BaseLightning(pl.LightningModule):
 class ConvMixerLightning(BaseLightning):
     def __init__(
         self,
-        optim,
         size=5,
         num_blocks=2,
         kernel_size=15,
@@ -147,17 +165,19 @@ class ConvMixerLightning(BaseLightning):
         res_type="add",
         op="classification",
     ):
-        super().__init__(lr=lr, num_classes=num_classes, op=op, optim=optim)
+        super().__init__(
+            lr=lr,
+            num_classes=num_classes,
+            op=op,
+        )
         self.op = op
         if res_type == "add":
-            # print("using ConvMixer")
             self.model = ConvMixer(
-                size, num_blocks, kernel_size, patch_size, num_classes, self.op
+                size, num_blocks, kernel_size, patch_size, self.num_outputs
             )
         elif res_type == "cat":
-            # print("using ConvRepeater")
             self.model = ConvRepeater(
-                size, num_blocks, kernel_size, patch_size, num_classes, self.op
+                size, num_blocks, kernel_size, patch_size, self.num_outputs
             )
         else:
             print(f"{res_type} is not a valid option")
@@ -170,7 +190,6 @@ class CNN_lightning(BaseLightning):
     def __init__(
         self,
         size=5,
-        num_blocks=2,
         kernel_size=15,
         num_classes=5,
         strides=2,
@@ -181,12 +200,11 @@ class CNN_lightning(BaseLightning):
         super().__init__(lr=lr, num_classes=num_classes, op=op)
         self.op = op
         self.model = CNN(
-            num_blocks=num_blocks,
             size=size,
             kernel_size=kernel_size,
             strides=strides,
             padding=padding,
-            op=self.op,
+            num_classes=self.num_outputs,
         )
 
     def forward(self, x):
@@ -194,8 +212,12 @@ class CNN_lightning(BaseLightning):
 
 
 class ADNet_lightning(BaseLightning):
-    def __init__(self, optim, num_classes=5, lr=0.03, op=CLASSIFICATION):
-        super().__init__(lr=lr, num_classes=num_classes, op=op, optim=optim)
+    def __init__(self, num_classes=5, lr=0.03, op=CLASSIFICATION):
+        super().__init__(
+            lr=lr,
+            num_classes=num_classes,
+            op=op,
+        )
         self.model = ADNet(num_classes=self.num_outputs)
 
     def forward(self, x):
@@ -217,7 +239,11 @@ class ViTLigthning(BaseLightning):
         emb_dropout=0.1,
         op="classification",
     ):
-        super().__init__(lr=lr, num_classes=num_classes, op=op)
+        super().__init__(
+            lr=lr,
+            num_classes=num_classes,
+            op=op,
+        )
         self.save_hyperparameters(ignore=["image_size", "lr"])
         self.model = ViT(
             image_size=image_size,
